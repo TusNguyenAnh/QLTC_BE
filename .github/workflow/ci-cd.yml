@@ -1,0 +1,48 @@
+name: Finance Management Deployment
+
+on:
+  push:
+    branches: [atus]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy using ssh
+        uses: appleboy/ssh-action@master
+        env:
+          SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          envs: SPRING_DATASOURCE_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET
+          script: |
+            cd /home/atus/qltc
+            
+            git fetch origin
+            git checkout atus
+            git pull origin atus
+            
+            docker stop qltc_be || true
+            docker rm qltc_be || true
+            
+            docker rmi raicacon/qltc-be:latest || true
+            docker build -t raicacon/qltc-be:latest .
+            
+            docker run -d \
+              --name qltc_be \
+              --restart unless-stopped \
+              --network qltc_network \
+              -p 8088:8088 \
+              -e SPRING_DATASOURCE_URL="$SPRING_DATASOURCE_URL" \
+              -e DB_USERNAME="$DB_USERNAME" \
+              -e DB_PASSWORD="$DB_PASSWORD" \
+              -e JWT_SECRET="$JWT_SECRET" \
+              raicacon/qltc-be:latest
+            
+            docker ps
