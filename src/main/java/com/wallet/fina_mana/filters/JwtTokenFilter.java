@@ -11,11 +11,13 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.internal.Pair;
 import org.springframework.beans.factory.annotation.Value;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -29,27 +31,47 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     private String apiPrefix;
     private final UserDetailsService userDetailsService;
     private final JwtTokenUtil jwtTokenUtil;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    private final String[] PUBLIC_ENDPOINTS_GET = {
+            "/api",
+            "/v2/api-docs",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/swagger-resources",
+            "/swagger-resources/**",
+            "/configuration/ui",
+            "/configuration/security",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/webjars/**",
+            "/webjars/swagger-ui/**",
+            "/swagger-ui/index.html",
+            "/media/**",
+            "/ws/**"
+    };
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            if (isBypassToken(request)){
+            if (isBypassToken(request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
             String authenHeader = request.getHeader("Authorization");
             // Kiểm tra xem request có token không
-            if (authenHeader == null || !authenHeader.startsWith("Bearer ")){
+            if (authenHeader == null || !authenHeader.startsWith("Bearer ")) {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                 return;
             }
             final String token = authenHeader.substring(7);
             final String username = jwtTokenUtil.extractUsername(token);
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null){
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 User userDetails = (User) userDetailsService.loadUserByUsername(username);
-                if (jwtTokenUtil.validationToken(token, userDetails)){
+                if (jwtTokenUtil.validationToken(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authenticationToken =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -57,21 +79,33 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                 }
             }
             filterChain.doFilter(request, response);
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
         }
     }
 
-    private boolean isBypassToken (@NonNull HttpServletRequest request){
+    private boolean isBypassToken(@NonNull HttpServletRequest request) {
+        // Chỉ bypass các GET endpoint public
+        if (HttpMethod.GET.matches(request.getMethod())) {
+            String path = request.getServletPath();
+
+            for (String pattern : PUBLIC_ENDPOINTS_GET) {
+                if (pathMatcher.match(pattern, path)) {
+                    return true;
+                }
+            }
+        }
+
         // Danh sách các request được phép đi qua
         final List<Pair<String, String>> bypassTokens = Arrays.asList(
                 Pair.of(String.format("%s/user/register", apiPrefix), "POST"),
                 Pair.of(String.format("%s/user/login", apiPrefix), "POST")
         );
-        for(Pair<String, String> bypassToken: bypassTokens){
+
+
+        for (Pair<String, String> bypassToken : bypassTokens) {
             if (request.getServletPath().contains(bypassToken.getLeft()) &&
-                    request.getMethod().equals(bypassToken.getRight())){
+                    request.getMethod().equals(bypassToken.getRight())) {
                 return true;
             }
         }

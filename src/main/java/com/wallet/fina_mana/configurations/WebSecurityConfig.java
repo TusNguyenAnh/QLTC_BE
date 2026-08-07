@@ -26,21 +26,37 @@ public class WebSecurityConfig {
     private final JwtTokenFilter jwtTokenFilter;
     @Value("${api.prefix}")
     private String apiPrefix;
+
+    private final String[] PUBLIC_ENDPOINTS_GET = {
+            "/api",
+            "/v2/api-docs",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/swagger-resources",
+            "/swagger-resources/**",
+            "/configuration/ui",
+            "/configuration/security",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/webjars/**",
+            "/webjars/swagger-ui/**",
+            "/swagger-ui/index.html",
+            "/media/**",
+            "/ws/**"
+    };
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception{
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
-                .authorizeHttpRequests(requests -> {
-                    requests.requestMatchers(
-                                    String.format("%s/user/register", apiPrefix),
-                                    String.format("%s/user/login", apiPrefix)
-                    ).permitAll()
-//                            .requestMatchers(HttpMethod.GET,
-//                                    String.format("%s/t ransaction/**", apiPrefix)).authenticated()
-                            .anyRequest().authenticated();
-                })
-                .csrf(AbstractHttpConfigurer::disable);
+                .authorizeHttpRequests(requests -> requests
+                        .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINTS_GET).permitAll()
+                        .requestMatchers(
+                                String.format("%s/user/register", apiPrefix),
+                                String.format("%s/user/login", apiPrefix)
+                        ).permitAll()
+                        .anyRequest().authenticated());
         httpSecurity.cors(new Customizer<CorsConfigurer<HttpSecurity>>() {
             @Override
             public void customize(CorsConfigurer<HttpSecurity> httpSecurityCorsConfigurer) {

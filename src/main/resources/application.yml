@@ -1,15 +1,16 @@
 server:
-  port: 8081
+  port: 8088
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/quanlytaichinh?useSSL=false
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate:
       format_sql: true
@@ -18,4 +19,19 @@ api:
   prefix: api/v1
 jwt:
   expiration: 2592000
-  secretKey: OJd3+enSUenPVIIVVRHLo55UKObjfWXF1mi1lzby2/A=
+  secretKey: ${JWT_SECRET}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /api  #la thong tin chi tiet cua req va doi tuong dto
+  show-actuator: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG                    # Hiển thị câu SQL thực thi
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # Hiển thị giá trị tham số
+    org.hibernate.orm.results: DEBUG            # Hiển thị mapping result
+    org.springframework.orm.jpa: DEBUG
+    org.springframework.security: DEBUG
