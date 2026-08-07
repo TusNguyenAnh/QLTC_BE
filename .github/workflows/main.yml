@@ -22,7 +22,7 @@ jobs:
           port: 22
           envs: SPRING_DATASOURCE_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET
           script: |
-            cd /home/atus/qltc
+            cd /home/atus/qltc/QLTC_BE
             
             git fetch origin
             git checkout atus
