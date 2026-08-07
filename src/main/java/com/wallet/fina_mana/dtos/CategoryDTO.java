@@ -23,4 +23,8 @@ public class CategoryDTO {
 
     @JsonProperty("parent_id")
     private String parentId;
+
+    // Để tạm, khi nào lấy đc currentUser thì xóa đi
+//    @JsonProperty("user_id")
+//    private long userId;
 }
